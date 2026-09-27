@@ -1,12 +1,12 @@
 # ==============================================================================
-# Nexus HRIS — Skrip Otomatisasi Startup Lokal (Windows PowerShell)
+# Nexus HRIS - Skrip Otomatisasi Startup Lokal (Windows PowerShell)
 # ==============================================================================
 
 $repoRoot = Resolve-Path "$PSScriptRoot/.."
 Set-Location $repoRoot
 
 Write-Host "========================================================" -ForegroundColor Cyan
-Write-Host "           🚀 Memulai Nexus HRIS Platform              " -ForegroundColor Cyan
+Write-Host "           Nexus HRIS Platform Local Startup            " -ForegroundColor Cyan
 Write-Host "========================================================" -ForegroundColor Cyan
 
 # 1. Pastikan Payroll Engine terkompilasi
@@ -22,10 +22,10 @@ npm run build --workspace=@nexus-hris/api
 Write-Host "`n[3/3] Menjalankan Backend API & Frontend Web..." -ForegroundColor Yellow
 
 $apiProcess = Start-Process node -ArgumentList "dist/main" -WorkingDirectory "backend" -PassThru -WindowStyle Hidden
-Write-Host ("  ✓ Backend API berjalan [PID: {0}] -> http://localhost:3000/api/v1" -f $apiProcess.Id) -ForegroundColor Green
+Write-Host "  [OK] Backend API berjalan [PID: $($apiProcess.Id)] -> http://localhost:3000/api/v1" -ForegroundColor Green
 
 $webProcess = Start-Process npm -ArgumentList "run start" -WorkingDirectory "frontend" -PassThru -WindowStyle Hidden
-Write-Host ("  ✓ Frontend Web berjalan [PID: {0}] -> http://localhost:3001" -f $webProcess.Id) -ForegroundColor Green
+Write-Host "  [OK] Frontend Web berjalan [PID: $($webProcess.Id)] -> http://localhost:3001" -ForegroundColor Green
 
 Write-Host "`n========================================================" -ForegroundColor Cyan
 Write-Host "  Semua layanan siap! Membuka browser..." -ForegroundColor Green
