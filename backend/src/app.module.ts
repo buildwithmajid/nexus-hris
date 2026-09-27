@@ -4,6 +4,8 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { configuration } from './config/configuration';
 import { validateEnv } from './config/env.validation';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RbacGuard } from './common/guards/rbac.guard';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { EncryptionModule } from './common/crypto/encryption.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -65,7 +67,15 @@ import { SettingsModule } from './modules/settings/settings.module';
   providers: [
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: ThrottlerGuard, // Dieksekusi pertama untuk rate limiting DoS/brute-force
+    },
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,   // Dieksekusi kedua untuk otentikasi JWT
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RbacGuard,      // Dieksekusi ketiga untuk otorisasi izin (RBAC)
     },
   ],
 })

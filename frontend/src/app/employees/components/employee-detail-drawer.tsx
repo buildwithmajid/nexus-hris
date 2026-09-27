@@ -138,9 +138,11 @@ export function EmployeeDetailDrawer({
                   Nomor Induk Kependudukan (NIK)
                 </span>
                 <span className="font-mono font-medium text-slate-800 text-xs">
-                  {unmaskNik
-                    ? employee.nik || '3171012805900001'
-                    : `${(employee.nik || '317101').substring(0, 6)}••••••••••`}
+                  {employee.nik
+                    ? unmaskNik
+                      ? employee.nik
+                      : `${employee.nik.substring(0, 6)}••••••••••`
+                    : '-'}
                 </span>
               </div>
 
@@ -149,9 +151,11 @@ export function EmployeeDetailDrawer({
                   NPWP (15/16 Digit)
                 </span>
                 <span className="font-mono font-medium text-slate-800 text-xs">
-                  {unmaskNik
-                    ? employee.npwp || '08.111.452.1-013.000'
-                    : `${(employee.npwp || '08.111').substring(0, 6)}•••••••••`}
+                  {employee.npwp
+                    ? unmaskNik
+                      ? employee.npwp
+                      : `${employee.npwp.substring(0, 6)}•••••••••`
+                    : '-'}
                 </span>
               </div>
 
@@ -160,7 +164,7 @@ export function EmployeeDetailDrawer({
                   Nomor BPJS Kesehatan
                 </span>
                 <span className="font-mono text-slate-800 font-medium">
-                  {employee.bpjsKesehatanNumber || '000184920101'}
+                  {employee.bpjsKesehatanNumber || '-'}
                 </span>
               </div>
 
@@ -169,7 +173,7 @@ export function EmployeeDetailDrawer({
                   Nomor BPJS Ketenagakerjaan
                 </span>
                 <span className="font-mono text-slate-800 font-medium">
-                  {employee.bpjsTkNumber || '22081940101'}
+                  {employee.bpjsTkNumber || '-'}
                 </span>
               </div>
             </div>
@@ -210,7 +214,7 @@ export function EmployeeDetailDrawer({
                   Bank Penyalur
                 </span>
                 <span className="font-medium text-slate-800">
-                  {employee.bankName || 'Bank Central Asia (BCA)'}
+                  {employee.bankName || '-'}
                 </span>
               </div>
 
@@ -219,9 +223,11 @@ export function EmployeeDetailDrawer({
                   Nomor Rekening Bank
                 </span>
                 <span className="font-mono font-medium text-slate-800">
-                  {unmaskNik
-                    ? employee.bankAccountNumber || '5271801507'
-                    : `${(employee.bankAccountNumber || '5271').substring(0, 4)}••••••`}
+                  {employee.bankAccountNumber
+                    ? unmaskNik
+                      ? employee.bankAccountNumber
+                      : `${employee.bankAccountNumber.substring(0, 4)}••••••`
+                    : '-'}
                 </span>
               </div>
             </div>
@@ -237,14 +243,14 @@ export function EmployeeDetailDrawer({
               <div>
                 <span className="text-[11px] text-steel block">Departemen</span>
                 <span className="font-medium text-slate-800">
-                  {employee.department?.name || 'Departemen Terdaftar'}
+                  {employee.department?.name || '-'}
                 </span>
               </div>
 
               <div>
                 <span className="text-[11px] text-steel block">Level Jabatan</span>
                 <span className="font-medium text-slate-800">
-                  Level {employee.position?.level || 1}
+                  {employee.position?.level ? `Level ${employee.position.level}` : '-'}
                 </span>
               </div>
 

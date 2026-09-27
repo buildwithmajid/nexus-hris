@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { Plus, Download, Upload } from 'lucide-react';
-import { useAuth } from '@/lib/auth-context';
+import { api } from '@/lib/api';
+import { useAuth, DEFAULT_COMPANY } from '@/contexts/auth-context';
 import { useEmployeeList } from './hooks/use-employee-list';
 import { EmployeeTable } from './components/employee-table';
 import { EmployeeFilters } from './components/employee-filters';
@@ -46,30 +47,41 @@ export default function EmployeesPage() {
     setSelectedEmployee,
   } = useEmployeeList();
 
-  const handleExportCsv = () => {
-    if (!employees || employees.length === 0) return;
+  const [isExporting, setIsExporting] = React.useState(false);
 
-    const headers = ['Kode Karyawan', 'Nama Lengkap', 'Departemen', 'Jabatan', 'Status PTKP', 'Kategori TER', 'Tipe Kontrak', 'Tanggal Bergabung'];
-    const rows = employees.map((emp) => [
-      `"${emp.employeeCode || ''}"`,
-      `"${emp.fullName || ''}"`,
-      `"${emp.department?.name || ''}"`,
-      `"${emp.position?.title || ''}"`,
-      `"${emp.maritalStatusPtkp || ''}"`,
-      `"${getTerBadge(emp.maritalStatusPtkp).text}"`,
-      `"${emp.contractType || ''}"`,
-      `"${emp.joinDate ? emp.joinDate.split('T')[0] : ''}"`,
-    ]);
+  const handleExportCsv = async () => {
+    setIsExporting(true);
+    try {
+      const fullRes = await api.employees.list(DEFAULT_COMPANY.id, undefined, 1, 2000);
+      const targetEmployees = fullRes.data && fullRes.data.length > 0 ? fullRes.data : employees;
+      if (!targetEmployees || targetEmployees.length === 0) return;
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `master_karyawan_nexus_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const headers = ['Kode Karyawan', 'Nama Lengkap', 'Departemen', 'Jabatan', 'Status PTKP', 'Kategori TER', 'Tipe Kontrak', 'Tanggal Bergabung'];
+      const rows = targetEmployees.map((emp) => [
+        `"${emp.employeeCode || ''}"`,
+        `"${emp.fullName || ''}"`,
+        `"${emp.department?.name || ''}"`,
+        `"${emp.position?.title || ''}"`,
+        `"${emp.maritalStatusPtkp || ''}"`,
+        `"${getTerBadge(emp.maritalStatusPtkp).text}"`,
+        `"${emp.contractType || ''}"`,
+        `"${emp.joinDate ? emp.joinDate.split('T')[0] : ''}"`,
+      ]);
+
+      const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `master_karyawan_nexus_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Gagal mengekspor CSV:', err);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (

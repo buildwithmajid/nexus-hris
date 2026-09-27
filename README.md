@@ -90,7 +90,7 @@ Gunakan akun-akun berikut untuk menguji sistem berdasarkan peran (*Role-Based Ac
 
 | Peran (Role) | Email Login | Password | Akses Modul |
 |---|---|---|---|
-| **Super Admin** | `admin@nexus-hris.id` | `NexusAdmin@2026!` | **Seluruh 9 Modul** (Akses Penuh Tanpa Batas) |
+| **Super Admin** | `admin@nexus-hris.id` | *(Tercantum pada `SEED_ADMIN_PASSWORD` di `.env.example`)* | **Seluruh 9 Modul** (Akses Penuh Tanpa Batas) |
 | **HR Admin** | `hr@nexus-hris.id` | *(Gunakan Persona Switcher)* | Master Karyawan, Presensi, Cuti & Lembur, ESS |
 | **Finance** | `finance@nexus-hris.id` | *(Gunakan Persona Switcher)* | Penggajian (Payroll), Laporan Analitik, ESS |
 | **Staff Karyawan** | `budi.santoso@nexus-hris.id` | *(Gunakan Persona Switcher)* | **Portal Saya (ESS)** & Cuti Pribadi (Menu Admin Otomatis Tersembunyi) |

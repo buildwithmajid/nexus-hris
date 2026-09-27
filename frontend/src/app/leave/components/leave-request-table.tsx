@@ -104,10 +104,10 @@ export function LeaveRequestTable({
                     <div className="flex flex-col items-center gap-0.5">
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 border border-amber-200">
                         <Clock className="h-3 w-3 text-amber-600" />
-                        <span>Menunggu HR</span>
+                        <span>Menunggu Persetujuan</span>
                       </span>
                       <span className="text-[10px] text-slate-400 font-medium">
-                        Tahap 2/2 (Manajer Dept ✓)
+                        Dalam Peninjauan
                       </span>
                     </div>
                   )}
@@ -115,10 +115,10 @@ export function LeaveRequestTable({
                     <div className="flex flex-col items-center gap-0.5">
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
                         <CheckCircle className="h-3 w-3 text-emerald-600" />
-                        <span>Disetujui Penuh</span>
+                        <span>Disetujui</span>
                       </span>
                       <span className="text-[10px] text-emerald-600 font-medium">
-                        Manajer & HR Terverifikasi
+                        Telah Terverifikasi
                       </span>
                     </div>
                   )}
@@ -129,7 +129,7 @@ export function LeaveRequestTable({
                         <span>Ditolak</span>
                       </span>
                       <span className="text-[10px] text-slate-400">
-                        Alasan Tercatat
+                        Permohonan Ditolak
                       </span>
                     </div>
                   )}

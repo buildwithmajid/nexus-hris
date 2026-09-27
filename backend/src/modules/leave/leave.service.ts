@@ -64,19 +64,14 @@ export class LeaveService {
   }
 
   /**
-   * Helper internal: Ambil employee untuk user yang sedang login (dengan fallback demo)
+   * Helper internal: Ambil employee untuk user yang sedang login
    */
   private async getEmployeeForUser(userId: string) {
-    let employee = await this.prisma.employee.findUnique({
+    const employee = await this.prisma.employee.findUnique({
       where: { userId },
     });
     if (!employee) {
-      employee = await this.prisma.employee.findFirst({
-        where: { employmentStatus: EmploymentStatus.ACTIVE },
-      });
-    }
-    if (!employee) {
-      throw new NotFoundException('Data karyawan tidak ditemukan');
+      throw new NotFoundException('Profil data karyawan tidak terhubung dengan akun user ini');
     }
     return employee;
   }
@@ -164,11 +159,12 @@ export class LeaveService {
    * Mengajukan permohonan cuti baru
    */
   async createLeaveRequest(userId: string, dto: CreateLeaveRequestDto) {
-    let targetEmployeeId = dto.employeeId;
-    if (!targetEmployeeId) {
-      const employee = await this.getEmployeeForUser(userId);
-      targetEmployeeId = employee.id;
-    }
+    const userEmployee = await this.getEmployeeForUser(userId);
+    // Jika dto.employeeId dikirimkan, pastikan sama dengan ID karyawan pengetik
+    const targetEmployeeId = (dto.employeeId && dto.employeeId === userEmployee.id)
+      ? dto.employeeId
+      : userEmployee.id;
+
     const start = new Date(dto.startDate);
     const end = new Date(dto.endDate);
 
@@ -274,81 +270,81 @@ export class LeaveService {
 
     const currentYear = request.startDate.getFullYear();
 
-    // 1. Update status pengajuan cuti menjadi APPROVED
-    const updated = await this.prisma.leaveRequest.update({
-      where: { id },
-      data: { status: LeaveRequestStatus.APPROVED },
-      include: { leaveType: true, employee: true },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Update status pengajuan cuti menjadi APPROVED
+      const updated = await tx.leaveRequest.update({
+        where: { id },
+        data: { status: LeaveRequestStatus.APPROVED },
+        include: { leaveType: true, employee: true },
+      });
 
-    // 2. Update saldo cuti terpakai (usedDays) jika cuti kuota
-    const balance = await this.prisma.leaveBalance.findUnique({
-      where: {
-        employeeId_leaveTypeId_year: {
-          employeeId: request.employeeId,
-          leaveTypeId: request.leaveTypeId,
-          year: currentYear,
-        },
-      },
-    });
-
-    if (balance) {
-      await this.prisma.leaveBalance.update({
-        where: { id: balance.id },
-        data: {
-          usedDays: {
-            increment: Number(request.totalDays),
+      // 2. Update saldo cuti terpakai (usedDays) jika cuti kuota
+      const balance = await tx.leaveBalance.findUnique({
+        where: {
+          employeeId_leaveTypeId_year: {
+            employeeId: request.employeeId,
+            leaveTypeId: request.leaveTypeId,
+            year: currentYear,
           },
         },
       });
-    }
 
-    // 3. SINKRONISASI OTOMATIS KE TABEL PRESENSI (ATTENDANCE)
-    // Tentukan status presensi: SICK jika cuti sakit, ON_LEAVE untuk jenis cuti lainnya
-    const isSick = request.leaveType.name.toLowerCase().includes('sakit');
-    const attendanceStatus: AttendanceStatus = isSick
-      ? AttendanceStatus.SICK
-      : AttendanceStatus.ON_LEAVE;
-
-    // Iterasi setiap tanggal hari kerja (Senin - Jumat) dalam rentang cuti
-    const curDate = new Date(request.startDate);
-    const endDate = new Date(request.endDate);
-
-    while (curDate <= endDate) {
-      const dayOfWeek = curDate.getUTCDay();
-      // Lewati Sabtu (6) dan Minggu (0)
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-        const targetDate = new Date(
-          Date.UTC(curDate.getUTCFullYear(), curDate.getUTCMonth(), curDate.getUTCDate()),
-        );
-
-        await this.prisma.attendance.upsert({
-          where: {
-            employeeId_date: {
-              employeeId: request.employeeId,
-              date: targetDate,
+      if (balance) {
+        await tx.leaveBalance.update({
+          where: { id: balance.id },
+          data: {
+            usedDays: {
+              increment: Number(request.totalDays),
             },
-          },
-          update: {
-            status: attendanceStatus,
-            notes: `Cuti Disetujui: ${request.leaveType.name}`,
-          },
-          create: {
-            employeeId: request.employeeId,
-            date: targetDate,
-            status: attendanceStatus,
-            notes: `Cuti Disetujui: ${request.leaveType.name}`,
           },
         });
       }
-      curDate.setUTCDate(curDate.getUTCDate() + 1);
-    }
 
-    this.logger.log(
-      `Cuti '${request.leaveType.name}' karyawan ${request.employee.fullName} berhasil disetujui & disinkronkan ke presensi.`,
-    );
+      // 3. SINKRONISASI OTOMATIS KE TABEL PRESENSI (ATTENDANCE)
+      const isSick = request.leaveType.name.toLowerCase().includes('sakit');
+      const attendanceStatus: AttendanceStatus = isSick
+        ? AttendanceStatus.SICK
+        : AttendanceStatus.ON_LEAVE;
 
-    return updated;
+      // Iterasi setiap tanggal hari kerja (Senin - Jumat) dalam rentang cuti
+      const curDate = new Date(request.startDate);
+      const endDate = new Date(request.endDate);
+
+      while (curDate <= endDate) {
+        const dayOfWeek = curDate.getUTCDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          const targetDate = new Date(
+            Date.UTC(curDate.getUTCFullYear(), curDate.getUTCMonth(), curDate.getUTCDate()),
+          );
+
+          await tx.attendance.upsert({
+            where: {
+              employeeId_date: {
+                employeeId: request.employeeId,
+                date: targetDate,
+              },
+            },
+            update: {
+              status: attendanceStatus,
+              notes: `Cuti Disetujui: ${request.leaveType.name}`,
+            },
+            create: {
+              employeeId: request.employeeId,
+              date: targetDate,
+              status: attendanceStatus,
+              notes: `Cuti Disetujui: ${request.leaveType.name}`,
+            },
+          });
+        }
+        curDate.setUTCDate(curDate.getUTCDate() + 1);
+      }
+
+      this.logger.log(
+        `Cuti '${request.leaveType.name}' karyawan ${request.employee.fullName} berhasil disetujui & disinkronkan ke presensi secara atomik.`,
+      );
+
+      return updated;
+    });
   }
 
   /**

@@ -85,6 +85,12 @@ export class AttendanceService {
 
     const daysInMonth = new Date(year, month, 0).getDate();
     let totalGenerated = 0;
+    const recordsToCreate: Array<{
+      employeeId: string;
+      date: Date;
+      status: AttendanceStatus;
+      notes: string;
+    }> = [];
 
     for (const emp of employees) {
       for (let day = 1; day <= daysInMonth; day++) {
@@ -103,24 +109,20 @@ export class AttendanceService {
           status = AttendanceStatus.LATE;
         }
 
-        await this.prisma.attendance.upsert({
-          where: {
-            employeeId_date: {
-              employeeId: emp.id,
-              date: currentDate,
-            },
-          },
-          update: { status },
-          create: {
-            employeeId: emp.id,
-            date: currentDate,
-            status,
-            notes: 'Simulasi Sistem Nexus HRIS',
-          },
+        recordsToCreate.push({
+          employeeId: emp.id,
+          date: currentDate,
+          status,
+          notes: 'Simulasi Sistem Nexus HRIS',
         });
-        totalGenerated++;
       }
     }
+
+    const batchResult = await this.prisma.attendance.createMany({
+      data: recordsToCreate,
+      skipDuplicates: true,
+    });
+    totalGenerated = batchResult.count;
 
     this.logger.log(`Simulasi presensi selesai: ${totalGenerated} log dihasilkan`);
     return {

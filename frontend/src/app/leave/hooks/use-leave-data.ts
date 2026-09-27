@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import { DEFAULT_COMPANY } from '@/lib/auth-context';
+import { DEFAULT_COMPANY } from '@/contexts/auth-context';
 
 export function useLeaveData(selectedYear: number) {
   const [leaveTypes, setLeaveTypes] = useState<any[]>([]);

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { AuthProvider } from '@/lib/auth-context';
+import { AuthProvider } from '@/contexts/auth-context';
 import { AppShell } from '@/components/layout/app-shell';
 
 export const metadata: Metadata = {

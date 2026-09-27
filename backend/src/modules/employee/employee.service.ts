@@ -46,7 +46,8 @@ export class EmployeeService {
       if (roleId) {
         const cleanName = dto.fullName.toLowerCase().replace(/[^a-z0-9]/g, '.');
         const userEmail = `${cleanName}.${dto.employeeCode.toLowerCase()}@nexus-hris.id`;
-        const defaultHash = await argon2.hash('NexusStaff@2026!', {
+        const tempPassword = process.env.DEFAULT_STAFF_PASSWORD || `NexusStaff@${Math.random().toString(36).slice(-8)}!`;
+        const defaultHash = await argon2.hash(tempPassword, {
           type: argon2.argon2id,
           memoryCost: 65536,
           timeCost: 3,
@@ -199,7 +200,7 @@ export class EmployeeService {
         supervisor: { select: { id: true, fullName: true, employeeCode: true } },
         leaveBalances: {
           include: { leaveType: true },
-          where: { year: 2026 },
+          where: { year: new Date().getFullYear() },
         },
       },
     });

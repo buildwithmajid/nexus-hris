@@ -63,30 +63,51 @@ export class PayrollCalculationService {
       result: ReturnType<typeof calculatePayroll>;
     }> = [];
 
-    for (const emp of employees) {
-      const startDate = new Date(Date.UTC(period.year, period.month - 1, 1));
-      const endDate = new Date(Date.UTC(period.year, period.month, 0));
+    const startDate = new Date(Date.UTC(period.year, period.month - 1, 1));
+    const endDate = new Date(Date.UTC(period.year, period.month, 0, 23, 59, 59));
+    const employeeIds = employees.map((e) => e.id);
 
-      const overtimeRecords = await this.prisma.overtimeEntry.findMany({
+    // Ambil seluruh data lembur & presensi periode ini sekaligus (Eliminasi N+1 query)
+    const [allOvertimeRecords, allAttendanceRecords] = await Promise.all([
+      this.prisma.overtimeEntry.findMany({
         where: {
-          employeeId: emp.id,
+          employeeId: { in: employeeIds },
           date: { gte: startDate, lte: endDate },
           status: 'APPROVED',
         },
-      });
+      }),
+      this.prisma.attendance.findMany({
+        where: {
+          employeeId: { in: employeeIds },
+          date: { gte: startDate, lte: endDate },
+        },
+      }),
+    ]);
 
+    // Grouping by employeeId di memori untuk pencarian O(1)
+    const overtimeByEmployee = new Map<string, typeof allOvertimeRecords>();
+    for (const ot of allOvertimeRecords) {
+      const list = overtimeByEmployee.get(ot.employeeId) || [];
+      list.push(ot);
+      overtimeByEmployee.set(ot.employeeId, list);
+    }
+
+    const attendanceByEmployee = new Map<string, typeof allAttendanceRecords>();
+    for (const att of allAttendanceRecords) {
+      const list = attendanceByEmployee.get(att.employeeId) || [];
+      list.push(att);
+      attendanceByEmployee.set(att.employeeId, list);
+    }
+
+    for (const emp of employees) {
+      const overtimeRecords = overtimeByEmployee.get(emp.id) || [];
       const overtimeEntries = overtimeRecords.map((ot) => ({
         date: ot.date.toISOString().split('T')[0],
         hours: Number(ot.hours),
         isHoliday: ot.isHoliday,
       }));
 
-      const attendanceRecords = await this.prisma.attendance.findMany({
-        where: {
-          employeeId: emp.id,
-          date: { gte: startDate, lte: endDate },
-        },
-      });
+      const attendanceRecords = attendanceByEmployee.get(emp.id) || [];
 
       let workingDays = totalWorkingDays;
       let alphaCount = 0;

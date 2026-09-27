@@ -7,7 +7,7 @@ import {
   Building2,
   ShieldCheck,
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 import { useReportsData } from './hooks/use-reports-data';
 import { useReportExport } from './hooks/use-report-export';
 import { ReportCostSummary } from './components/report-cost-summary';

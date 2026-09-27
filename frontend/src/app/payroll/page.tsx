@@ -8,7 +8,7 @@ import {
   CheckCircle,
   X,
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 import { usePayrollList } from './hooks/use-payroll-list';
 import { usePayrollExport } from './hooks/use-payroll-export';
 import { PeriodSelector } from './components/period-selector';

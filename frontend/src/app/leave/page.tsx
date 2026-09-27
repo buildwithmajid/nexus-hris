@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   FileText,
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 import { useLeaveData } from './hooks/use-leave-data';
 import { useLeaveOperations } from './hooks/use-leave-operations';
 import { LeaveBalancesCard } from './components/leave-balances-card';

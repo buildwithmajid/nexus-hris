@@ -22,7 +22,7 @@ import {
   Cpu,
   Wifi,
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 
 interface DemoAccount {
   role: string;
@@ -77,7 +77,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
   const [email, setEmail] = useState('admin@nexus-hris.id');
-  const [password, setPassword] = useState('NexusAdmin@2026!');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showSandbox, setShowSandbox] = useState(false);

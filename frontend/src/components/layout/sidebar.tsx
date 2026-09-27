@@ -17,7 +17,7 @@ import {
   LogOut,
   ChevronRight,
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 
 export function Sidebar() {
   const pathname = usePathname();

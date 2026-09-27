@@ -18,7 +18,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { DEFAULT_COMPANY } from '@/lib/auth-context';
+import { DEFAULT_COMPANY } from '@/contexts/auth-context';
 
 interface CommandPaletteProps {
   isOpen: boolean;

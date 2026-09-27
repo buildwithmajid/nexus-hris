@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import { DEFAULT_COMPANY } from '@/lib/auth-context';
+import { DEFAULT_COMPANY } from '@/contexts/auth-context';
 
 export function useReportsData(selectedMonth: number, selectedYear: number) {
   const [summaryData, setSummaryData] = useState<any>(null);

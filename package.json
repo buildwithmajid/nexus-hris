@@ -8,7 +8,15 @@
     "packages/payroll-engine"
   ],
   "scripts": {
-    "test:payroll-engine": "npm run test --workspace=packages/payroll-engine"
+    "dev:backend": "npm run start:dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build:payroll-engine": "npm run build --workspace=packages/payroll-engine",
+    "build:backend": "npm run build --workspace=backend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build": "npm run build:payroll-engine && npm run build:backend && npm run build:frontend",
+    "test:payroll-engine": "npm run test --workspace=packages/payroll-engine",
+    "test:backend": "npm run test --workspace=backend",
+    "test": "npm run test:payroll-engine && npm run test:backend"
   }
 }
 

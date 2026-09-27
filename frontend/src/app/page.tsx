@@ -12,7 +12,7 @@ import {
   Building,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { useAuth, DEFAULT_COMPANY } from '@/lib/auth-context';
+import { useAuth, DEFAULT_COMPANY } from '@/contexts/auth-context';
 
 export default function DashboardPage() {
   const { hasPermission } = useAuth();

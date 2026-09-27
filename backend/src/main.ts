@@ -1,11 +1,10 @@
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import * as cookieParser from 'cookie-parser';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
-import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
-import { RbacGuard } from './common/guards/rbac.guard';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -15,8 +14,6 @@ async function bootstrap() {
         ? ['error', 'warn']
         : ['error', 'warn', 'log', 'debug'],
   });
-
-  const reflector = app.get(Reflector);
 
   // ==========================================================================
   // 1. Helmet — security HTTP headers
@@ -72,8 +69,8 @@ async function bootstrap() {
   // ==========================================================================
   // 3. Body size limit — mencegah payload bombing
   // ==========================================================================
-  app.use(require('express').json({ limit: '1mb' }));
-  app.use(require('express').urlencoded({ limit: '1mb', extended: true }));
+  app.use(json({ limit: '1mb' }));
+  app.use(urlencoded({ limit: '1mb', extended: true }));
 
   // ==========================================================================
   // 4. Cookie parser (untuk refresh token via cookie jika diperlukan)
@@ -106,13 +103,7 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   // ==========================================================================
-  // 8. Global Guards — semua endpoint protected by default
-  //    Endpoint public harus ditandai @Public()
-  // ==========================================================================
-  app.useGlobalGuards(new JwtAuthGuard(reflector), new RbacGuard(reflector));
-
-  // ==========================================================================
-  // 9. Graceful shutdown
+  // 8. Graceful shutdown
   // ==========================================================================
   app.enableShutdownHooks();
 

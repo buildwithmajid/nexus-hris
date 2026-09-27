@@ -13,7 +13,7 @@ import {
   Clock,
   Check,
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 import { CommandPalette } from './command-palette';
 
 export function Topbar() {

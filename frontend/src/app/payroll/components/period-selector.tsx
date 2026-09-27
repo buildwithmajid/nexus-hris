@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Play, Send, CheckCircle, Lock } from 'lucide-react';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 
 interface PeriodSelectorProps {
   periods: any[];

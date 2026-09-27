@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import { useAuth, DEFAULT_COMPANY } from '@/lib/auth-context';
+import { useAuth, DEFAULT_COMPANY } from '@/contexts/auth-context';
 
 export function usePayrollList() {
   const [periods, setPeriods] = useState<any[]>([]);

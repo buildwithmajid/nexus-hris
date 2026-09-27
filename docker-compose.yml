@@ -30,7 +30,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile.api
+      dockerfile: backend/Dockerfile
     container_name: nexus_api
     restart: always
     depends_on:
@@ -60,7 +60,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile.web
+      dockerfile: frontend/Dockerfile
     container_name: nexus_web
     restart: always
     depends_on:

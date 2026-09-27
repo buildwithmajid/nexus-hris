@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
-import { DEFAULT_COMPANY } from '@/lib/auth-context';
+import { DEFAULT_COMPANY } from '@/contexts/auth-context';
 
 export function useEmployeeList() {
   const [employees, setEmployees] = useState<any[]>([]);
