@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # ==============================================================================
+  # 1. Database PostgreSQL
+  # ==============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: nexus_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_dev_2026
+      POSTGRES_DB: nexus_hris
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - nexus-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nexus -d nexus_hris']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ==============================================================================
+  # 2. Backend API (NestJS + Prisma + Payroll Engine)
+  # ==============================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: nexus_api
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://nexus:nexus_dev_2026@postgres:5432/nexus_hris?schema=public
+      JWT_ACCESS_SECRET: nexus-hris-super-secret-access-token-key-2026-indonesia-enterprise
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_SECRET: nexus-hris-super-secret-refresh-token-key-2026-indonesia-enterprise
+      JWT_REFRESH_EXPIRES_IN: 7d
+      ENCRYPTION_KEY_HEX: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      BLIND_INDEX_PEPPER: nexus-hris-pepper-secret-2026
+      THROTTLE_TTL: 60000
+      THROTTLE_LIMIT: 100
+      ALLOWED_ORIGINS: http://localhost:3001,http://127.0.0.1:3001
+    ports:
+      - '3000:3000'
+    networks:
+      - nexus-network
+
+  # ==============================================================================
+  # 3. Frontend Web (Next.js 14 Cockpit)
+  # ==============================================================================
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: nexus_web
+    restart: always
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost:3000/api/v1
+      PORT: 3001
+    ports:
+      - '3001:3001'
+    networks:
+      - nexus-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  nexus-network:
+    driver: bridge
+

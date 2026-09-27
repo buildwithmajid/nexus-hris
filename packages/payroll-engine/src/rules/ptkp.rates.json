@@ -1,0 +1,10 @@
+[
+  { "status": "TK/0", "amountPerYear": 54000000 },
+  { "status": "TK/1", "amountPerYear": 58500000 },
+  { "status": "TK/2", "amountPerYear": 63000000 },
+  { "status": "TK/3", "amountPerYear": 67500000 },
+  { "status": "K/0",  "amountPerYear": 58500000 },
+  { "status": "K/1",  "amountPerYear": 63000000 },
+  { "status": "K/2",  "amountPerYear": 67500000 },
+  { "status": "K/3",  "amountPerYear": 72000000 }
+]

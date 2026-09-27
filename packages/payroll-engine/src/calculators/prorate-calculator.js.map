@@ -1,0 +1,1 @@
+{"version":3,"file":"prorate-calculator.js","sourceRoot":"","sources":["prorate-calculator.ts"],"names":[],"mappings":";;AAMA,sCASC;AATD,SAAgB,aAAa,CAC3B,UAAkB,EAClB,WAAmB,EACnB,gBAAwB;IAExB,IAAI,WAAW,IAAI,gBAAgB,EAAE,CAAC;QACpC,OAAO,UAAU,CAAC;IACpB,CAAC;IACD,OAAO,IAAI,CAAC,KAAK,CAAC,CAAC,UAAU,GAAG,WAAW,CAAC,GAAG,gBAAgB,CAAC,CAAC;AACnE,CAAC"}

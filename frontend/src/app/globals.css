@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --canvas: #F8FAFC;
+    --surface: #FFFFFF;
+    --navy: #0A2540;
+    --charcoal: #0F172A;
+    --steel: #64748B;
+    --border: #E2E8F0;
+  }
+
+  body {
+    background-color: var(--canvas);
+    color: var(--charcoal);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Strict Tabular Numbers for all financial and code data */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Hairline table row hover */
+.table-row-hover {
+  transition: background-color 100ms ease;
+}
+.table-row-hover:hover {
+  background-color: #F8FAFC;
+}
+
+/* =============================================================================
+   PRINT MEDIA — Cetak Slip Gaji Resmi (A4 Portrait)
+   Sembunyikan navigasi, toolbar, dan backdrop overlay saat print/Save as PDF
+   ============================================================================= */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 16mm 14mm;
+  }
+
+  /* Sembunyikan semua elemen UI kecuali modal slip */
+  body > * {
+    display: none !important;
+  }
+
+  /* Tampilkan hanya konten modal slip gaji */
+  body [data-print-slip] {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    background: #fff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Background overlay disembunyikan saat print */
+  [data-print-overlay] {
+    display: none !important;
+  }
+
+  /* Sembunyikan tombol aksi dalam slip saat print */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Force colors agar heading dan nominal tampil hitam pekat */
+  .bg-navy {
+    background-color: #0A2540 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Pastikan tidak ada page break di tengah tabel rincian */
+  tr, td, th {
+    page-break-inside: avoid;
+  }
+}

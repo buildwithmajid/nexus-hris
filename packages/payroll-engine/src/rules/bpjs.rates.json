@@ -1,0 +1,13 @@
+{
+  "kesehatan": {
+    "companyPercent": 0.04,
+    "employeePercent": 0.01,
+    "wageCap": 12000000
+  },
+  "ketenagakerjaan": {
+    "jht": { "companyPercent": 0.037, "employeePercent": 0.02 },
+    "jkk": { "companyPercent": 0.0024 },
+    "jkm": { "companyPercent": 0.003 },
+    "jp": { "companyPercent": 0.02, "employeePercent": 0.01, "wageCap": 10042300 }
+  }
+}

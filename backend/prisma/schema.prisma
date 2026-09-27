@@ -1,0 +1,694 @@
+// =============================================================================
+// Nexus HRIS — Prisma Schema
+// Sesuai ERD-Sistem-HRIS.md v1.0
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUM DEFINITIONS
+// =============================================================================
+
+enum EmploymentStatus {
+  ACTIVE
+  RESIGNED
+  TERMINATED
+  ON_LEAVE
+}
+
+enum ContractType {
+  PERMANENT
+  CONTRACT
+  INTERN
+  PROBATION
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  ON_LEAVE
+  SICK
+  PERMIT
+}
+
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum CorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum HolidayType {
+  NATIONAL
+  COMPANY_LEAVE
+}
+
+enum PayrollStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  LOCKED
+}
+
+enum OvertimeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalRequestType {
+  LEAVE
+  REIMBURSEMENT
+  PAYROLL
+  ATTENDANCE_CORRECTION
+}
+
+enum ApprovalAction {
+  APPROVED
+  REJECTED
+}
+
+enum ApproverType {
+  DIRECT_SUPERVISOR
+  DEPARTMENT_HEAD
+  ROLE
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum ComponentType {
+  EARNING
+  DEDUCTION
+}
+
+enum ReimbursementStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REIMBURSED
+}
+
+// =============================================================================
+// AUTH & RBAC
+// =============================================================================
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique @db.VarChar(255)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  roleId       String    @map("role_id") @db.Uuid
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  role          Role           @relation(fields: [roleId], references: [id])
+  employee      Employee?
+  refreshTokens RefreshToken[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  employeeHistoryChanges EmployeeHistory[] @relation("ChangedBy")
+  leaveBalanceAdjustments LeaveBalance[]   @relation("AdjustedBy")
+  payrollProcessed PayrollPeriod[]         @relation("ProcessedBy")
+  payrollApproved  PayrollPeriod[]         @relation("ApprovedBy")
+  approvalLogs  ApprovalLog[]
+  attendanceReviews AttendanceCorrection[] @relation("ReviewedBy")
+
+  @@map("users")
+}
+
+model Role {
+  id          String @id @default(uuid()) @db.Uuid
+  name        String @unique @db.VarChar(50)
+  description String @db.Text
+
+  // Relations
+  users           User[]
+  rolePermissions RolePermission[]
+  approvalSteps   ApprovalStep[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String @id @default(uuid()) @db.Uuid
+  code        String @unique @db.VarChar(100) // misal: "employee.create"
+  description String @db.Text
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+/// Refresh token disimpan di database (hash-nya saja, bukan plaintext)
+/// agar bisa di-revoke dan untuk deteksi token theft (family tracking)
+model RefreshToken {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  tokenHash  String   @unique @map("token_hash") @db.VarChar(255) // SHA-256 dari token
+  familyId   String   @map("family_id") @db.Uuid                  // untuk deteksi reuse attack
+  isRevoked  Boolean  @default(false) @map("is_revoked")
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+// =============================================================================
+// ORGANISASI
+// =============================================================================
+
+model Company {
+  id           String  @id @default(uuid()) @db.Uuid
+  name         String  @db.VarChar(255)
+  npwp         String? @db.VarChar(30)
+  riskClassJkk String  @default("I") @map("risk_class_jkk") @db.VarChar(20) // I-V
+  address      String? @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  departments    Department[]
+  employees      Employee[]
+  shifts         Shift[]
+  holidays       Holiday[]
+  payrollPeriods PayrollPeriod[]
+  approvalWorkflows ApprovalWorkflow[]
+  overtimeRules  OvertimeRule[]
+
+  @@map("companies")
+}
+
+model Department {
+  id                 String  @id @default(uuid()) @db.Uuid
+  companyId          String  @map("company_id") @db.Uuid
+  name               String  @db.VarChar(100)
+  parentDepartmentId String? @map("parent_department_id") @db.Uuid
+
+  company          Company      @relation(fields: [companyId], references: [id])
+  parentDepartment Department?  @relation("SubDepartment", fields: [parentDepartmentId], references: [id])
+  subDepartments   Department[] @relation("SubDepartment")
+  positions        Position[]
+  employees        Employee[]
+
+  @@map("departments")
+}
+
+model Position {
+  id           String @id @default(uuid()) @db.Uuid
+  departmentId String @map("department_id") @db.Uuid
+  title        String @db.VarChar(100)
+  level        Int    @default(1)
+
+  department Department @relation(fields: [departmentId], references: [id])
+  employees  Employee[]
+
+  @@map("positions")
+}
+
+// =============================================================================
+// EMPLOYEE
+// =============================================================================
+
+model Employee {
+  id               String           @id @default(uuid()) @db.Uuid
+  userId           String           @unique @map("user_id") @db.Uuid
+  companyId        String           @map("company_id") @db.Uuid
+  departmentId     String           @map("department_id") @db.Uuid
+  positionId       String           @map("position_id") @db.Uuid
+  supervisorId     String?          @map("supervisor_id") @db.Uuid
+  employeeCode     String           @unique @map("employee_code") @db.VarChar(20)
+  fullName         String           @map("full_name") @db.VarChar(255)
+  birthDate        DateTime?        @map("birth_date") @db.Date
+  joinDate         DateTime         @map("join_date") @db.Date
+  resignDate       DateTime?        @map("resign_date") @db.Date
+  employmentStatus EmploymentStatus @default(ACTIVE) @map("employment_status")
+  contractType     ContractType     @default(PERMANENT) @map("contract_type")
+  maritalStatusPtkp String         @default("TK/0") @map("marital_status_ptkp") @db.VarChar(10)
+  baseSalary       Decimal          @map("base_salary") @db.Decimal(15, 2)
+  fixedAllowance   Decimal          @default(0) @map("fixed_allowance") @db.Decimal(15, 2)
+  shiftId          String?          @map("shift_id") @db.Uuid
+
+  // Field sensitif — disimpan terenkripsi (AES-256-GCM)
+  // Format: "iv:ciphertext:authTag" dalam base64
+  encryptedNik         String? @map("encrypted_nik") @db.Text
+  nikHash              String? @map("nik_hash") @db.VarChar(64)  // SHA-256+pepper untuk lookup
+  encryptedBankAccount String? @map("encrypted_bank_account") @db.Text
+  bankName             String? @map("bank_name") @db.VarChar(100)
+  encryptedNpwp        String? @map("encrypted_npwp") @db.Text
+  npwpHash             String? @map("npwp_hash") @db.VarChar(64)
+  bpjsKesehatanNumber  String? @map("bpjs_kesehatan_number") @db.VarChar(30)
+  bpjsTkNumber         String? @map("bpjs_tk_number") @db.VarChar(30)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user         User         @relation(fields: [userId], references: [id])
+  company      Company      @relation(fields: [companyId], references: [id])
+  department   Department   @relation(fields: [departmentId], references: [id])
+  position     Position     @relation(fields: [positionId], references: [id])
+  supervisor   Employee?    @relation("Supervisor", fields: [supervisorId], references: [id])
+  subordinates Employee[]   @relation("Supervisor")
+  shift        Shift?       @relation(fields: [shiftId], references: [id])
+  history      EmployeeHistory[]
+  attendance   Attendance[]
+  leaveRequests LeaveRequest[]
+  leaveBalances LeaveBalance[]
+  payrollDetails PayrollDetail[]
+  overtimeEntries OvertimeEntry[]
+  reimbursementRequests ReimbursementRequest[]
+
+  @@index([nikHash])
+  @@index([companyId])
+  @@index([departmentId])
+  @@map("employees")
+}
+
+model EmployeeHistory {
+  id          String   @id @default(uuid()) @db.Uuid
+  employeeId  String   @map("employee_id") @db.Uuid
+  fieldChanged String  @map("field_changed") @db.VarChar(50)
+  oldValue    String?  @map("old_value") @db.Text
+  newValue    String?  @map("new_value") @db.Text
+  effectiveDate DateTime @map("effective_date") @db.Date
+  changedById String   @map("changed_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  employee  Employee @relation(fields: [employeeId], references: [id])
+  changedBy User     @relation("ChangedBy", fields: [changedById], references: [id])
+
+  @@index([employeeId])
+  @@map("employee_history")
+}
+
+// =============================================================================
+// ABSENSI
+// =============================================================================
+
+model Shift {
+  id                    String  @id @default(uuid()) @db.Uuid
+  companyId             String  @map("company_id") @db.Uuid
+  name                  String  @db.VarChar(50)
+  startTime             DateTime @map("start_time") @db.Time
+  endTime               DateTime @map("end_time") @db.Time
+  isOvernight           Boolean  @default(false) @map("is_overnight")
+  lateToleranceMinutes  Int      @default(0) @map("late_tolerance_minutes")
+
+  company   Company    @relation(fields: [companyId], references: [id])
+  employees Employee[]
+
+  @@map("shifts")
+}
+
+model Attendance {
+  id                  String           @id @default(uuid()) @db.Uuid
+  employeeId          String           @map("employee_id") @db.Uuid
+  shiftId             String?          @map("shift_id") @db.Uuid
+  date                DateTime         @db.Date
+  clockInTime         DateTime?        @map("clock_in_time")
+  clockOutTime        DateTime?        @map("clock_out_time")
+  clockInLatitude     Decimal?         @map("clock_in_latitude") @db.Decimal(10, 7)
+  clockInLongitude    Decimal?         @map("clock_in_longitude") @db.Decimal(10, 7)
+  clockInPhotoUrl     String?          @map("clock_in_photo_url") @db.VarChar(500)
+  deviceFingerprint   String?          @map("device_fingerprint") @db.VarChar(255)
+  status              AttendanceStatus @default(ABSENT)
+  notes               String?          @db.Text
+  createdAt           DateTime         @default(now()) @map("created_at")
+
+  employee   Employee               @relation(fields: [employeeId], references: [id])
+  correction AttendanceCorrection?
+
+  @@unique([employeeId, date])
+  @@index([employeeId, date])
+  @@map("attendance")
+}
+
+model AttendanceCorrection {
+  id                  String           @id @default(uuid()) @db.Uuid
+  attendanceId        String?          @unique @map("attendance_id") @db.Uuid
+  employeeId          String           @map("employee_id") @db.Uuid
+  requestedClockIn    DateTime?        @map("requested_clock_in")
+  requestedClockOut   DateTime?        @map("requested_clock_out")
+  reason              String           @db.Text
+  status              CorrectionStatus @default(PENDING)
+  reviewedById        String?          @map("reviewed_by") @db.Uuid
+  createdAt           DateTime         @default(now()) @map("created_at")
+
+  attendance  Attendance? @relation(fields: [attendanceId], references: [id])
+  reviewedBy  User?       @relation("ReviewedBy", fields: [reviewedById], references: [id])
+
+  @@map("attendance_corrections")
+}
+
+model Holiday {
+  id        String      @id @default(uuid()) @db.Uuid
+  companyId String?     @map("company_id") @db.Uuid
+  date      DateTime    @db.Date
+  name      String      @db.VarChar(100)
+  type      HolidayType @default(NATIONAL)
+
+  company Company? @relation(fields: [companyId], references: [id])
+
+  @@index([date])
+  @@map("holidays")
+}
+
+// =============================================================================
+// CUTI & IZIN
+// =============================================================================
+
+model LeaveType {
+  id               String  @id @default(uuid()) @db.Uuid
+  name             String  @db.VarChar(50)
+  defaultQuotaDays Int     @map("default_quota_days")
+  isPaid           Boolean @default(true) @map("is_paid")
+  requiresDocument Boolean @default(false) @map("requires_document")
+
+  leaveRequests LeaveRequest[]
+  leaveBalances LeaveBalance[]
+
+  @@map("leave_types")
+}
+
+model LeaveBalance {
+  id              String   @id @default(uuid()) @db.Uuid
+  employeeId      String   @map("employee_id") @db.Uuid
+  leaveTypeId     String   @map("leave_type_id") @db.Uuid
+  year            Int
+  quotaDays       Decimal  @default(0) @map("quota_days") @db.Decimal(5, 2)
+  usedDays        Decimal  @default(0) @map("used_days") @db.Decimal(5, 2)
+  adjustedById    String?  @map("adjusted_by") @db.Uuid
+  adjustmentReason String? @map("adjustment_reason") @db.Text
+
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+  adjustedBy  User?     @relation("AdjustedBy", fields: [adjustedById], references: [id])
+
+  @@unique([employeeId, leaveTypeId, year])
+  @@index([employeeId, year])
+  @@map("leave_balances")
+}
+
+model LeaveRequest {
+  id                  String             @id @default(uuid()) @db.Uuid
+  employeeId          String             @map("employee_id") @db.Uuid
+  leaveTypeId         String             @map("leave_type_id") @db.Uuid
+  startDate           DateTime           @map("start_date") @db.Date
+  endDate             DateTime           @map("end_date") @db.Date
+  totalDays           Decimal            @map("total_days") @db.Decimal(5, 2)
+  reason              String             @db.Text
+  attachmentUrl       String?            @map("attachment_url") @db.VarChar(500)
+  status              LeaveRequestStatus @default(PENDING)
+  currentApprovalStep Int                @default(1) @map("current_approval_step")
+  createdAt           DateTime           @default(now()) @map("created_at")
+
+  employee  Employee  @relation(fields: [employeeId], references: [id])
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@index([employeeId])
+  @@map("leave_requests")
+}
+
+// =============================================================================
+// APPROVAL WORKFLOW (GENERIK / REUSABLE)
+// =============================================================================
+
+model ApprovalWorkflow {
+  id          String              @id @default(uuid()) @db.Uuid
+  companyId   String              @map("company_id") @db.Uuid
+  requestType ApprovalRequestType @map("request_type")
+  name        String              @db.VarChar(100)
+  isActive    Boolean             @default(true) @map("is_active")
+
+  company Company        @relation(fields: [companyId], references: [id])
+  steps   ApprovalStep[]
+
+  @@map("approval_workflows")
+}
+
+model ApprovalStep {
+  id             String       @id @default(uuid()) @db.Uuid
+  workflowId     String       @map("workflow_id") @db.Uuid
+  stepOrder      Int          @map("step_order")
+  approverType   ApproverType @map("approver_type")
+  approverRoleId String?      @map("approver_role_id") @db.Uuid
+
+  workflow      ApprovalWorkflow @relation(fields: [workflowId], references: [id])
+  approverRole  Role?            @relation(fields: [approverRoleId], references: [id])
+  approvalLogs  ApprovalLog[]
+
+  @@map("approval_steps")
+}
+
+model ApprovalLog {
+  id          String              @id @default(uuid()) @db.Uuid
+  requestType ApprovalRequestType @map("request_type")
+  requestId   String              @map("request_id") @db.Uuid // polymorphic
+  stepId      String              @map("step_id") @db.Uuid
+  approverId  String              @map("approver_id") @db.Uuid
+  action      ApprovalAction
+  notes       String?             @db.Text
+  createdAt   DateTime            @default(now()) @map("created_at")
+
+  step     ApprovalStep @relation(fields: [stepId], references: [id])
+  approver User         @relation(fields: [approverId], references: [id])
+
+  @@index([requestType, requestId])
+  @@map("approval_logs")
+}
+
+// =============================================================================
+// PAYROLL
+// =============================================================================
+
+model PayrollPeriod {
+  id          String        @id @default(uuid()) @db.Uuid
+  companyId   String        @map("company_id") @db.Uuid
+  month       Int
+  year        Int
+  status      PayrollStatus @default(DRAFT)
+  processedById String?     @map("processed_by") @db.Uuid
+  approvedById  String?     @map("approved_by") @db.Uuid
+  lockedAt    DateTime?     @map("locked_at")
+
+  company      Company         @relation(fields: [companyId], references: [id])
+  processedBy  User?           @relation("ProcessedBy", fields: [processedById], references: [id])
+  approvedBy   User?           @relation("ApprovedBy", fields: [approvedById], references: [id])
+  payrollDetails PayrollDetail[]
+
+  @@unique([companyId, month, year])
+  @@map("payroll_periods")
+}
+
+model PayrollDetail {
+  id                     String  @id @default(uuid()) @db.Uuid
+  payrollPeriodId        String  @map("payroll_period_id") @db.Uuid
+  employeeId             String  @map("employee_id") @db.Uuid
+  baseSalary             Decimal @map("base_salary") @db.Decimal(15, 2)
+  fixedAllowance         Decimal @map("fixed_allowance") @db.Decimal(15, 2)
+  overtimeAmount         Decimal @map("overtime_amount") @db.Decimal(15, 2)
+  grossIncome            Decimal @map("gross_income") @db.Decimal(15, 2)
+  bpjsKesehatanEmployee  Decimal @map("bpjs_kesehatan_employee") @db.Decimal(15, 2)
+  bpjsKesehatanCompany   Decimal @map("bpjs_kesehatan_company") @db.Decimal(15, 2)
+  bpjsTkEmployee         Decimal @map("bpjs_tk_employee") @db.Decimal(15, 2)
+  bpjsTkCompany          Decimal @map("bpjs_tk_company") @db.Decimal(15, 2)
+  pph21Amount            Decimal @map("pph21_amount") @db.Decimal(15, 2)
+  otherDeductions        Decimal @default(0) @map("other_deductions") @db.Decimal(15, 2)
+  netSalary              Decimal @map("net_salary") @db.Decimal(15, 2)
+  rateSnapshot           Json    @map("rate_snapshot") // snapshot rate TER/BPJS saat dihitung
+  slipPdfUrl             String? @map("slip_pdf_url") @db.VarChar(500)
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  payrollPeriod      PayrollPeriod      @relation(fields: [payrollPeriodId], references: [id])
+  employee           Employee           @relation(fields: [employeeId], references: [id])
+  payrollComponents  PayrollComponent[]
+  overtimeEntries    OvertimeEntry[]
+
+  @@unique([payrollPeriodId, employeeId])
+  @@map("payroll_details")
+}
+
+model PayrollComponent {
+  id              String        @id @default(uuid()) @db.Uuid
+  payrollDetailId String        @map("payroll_detail_id") @db.Uuid
+  componentType   ComponentType @map("component_type")
+  componentName   String        @map("component_name") @db.VarChar(100)
+  amount          Decimal       @db.Decimal(15, 2)
+
+  payrollDetail PayrollDetail @relation(fields: [payrollDetailId], references: [id])
+
+  @@map("payroll_components")
+}
+
+model OvertimeEntry {
+  id              String        @id @default(uuid()) @db.Uuid
+  employeeId      String        @map("employee_id") @db.Uuid
+  date            DateTime      @db.Date
+  hours           Decimal       @db.Decimal(4, 2)
+  isHoliday       Boolean       @map("is_holiday")
+  status          OvertimeStatus @default(PENDING)
+  payrollDetailId String?       @map("payroll_detail_id") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  employee      Employee       @relation(fields: [employeeId], references: [id])
+  payrollDetail PayrollDetail? @relation(fields: [payrollDetailId], references: [id])
+
+  @@index([employeeId])
+  @@map("overtime_entries")
+}
+
+// =============================================================================
+// RATE & KONFIGURASI PAJAK/BPJS
+// =============================================================================
+
+model TerRate {
+  id          String   @id @default(uuid()) @db.Uuid
+  kategori    String   @db.Char(1)         // A, B, C
+  batasBawah  BigInt   @map("batas_bawah")
+  batasAtas   BigInt?  @map("batas_atas")  // null = tidak terbatas
+  tarif       Decimal  @db.Decimal(6, 5)   // misal 0.01750
+  berlakuSejak DateTime @map("berlaku_sejak") @db.Date
+
+  @@index([kategori, batasBawah])
+  @@map("ter_rates")
+}
+
+model PtkpRate {
+  id            String   @id @default(uuid()) @db.Uuid
+  status        String   @db.VarChar(10) // TK/0, K/1, dst
+  amountPerYear Decimal  @map("amount_per_year") @db.Decimal(15, 2)
+  berlakuSejak  DateTime @map("berlaku_sejak") @db.Date
+
+  @@map("ptkp_rates")
+}
+
+model BpjsRate {
+  id                String   @id @default(uuid()) @db.Uuid
+  program           String   @db.VarChar(20) // kesehatan, jht, jkk, jkm, jp
+  companyPercentage Decimal  @map("company_percentage") @db.Decimal(5, 4)
+  employeePercentage Decimal @map("employee_percentage") @db.Decimal(5, 4)
+  wageCap           BigInt?  @map("wage_cap")
+  riskClass         String?  @map("risk_class") @db.VarChar(20) // untuk JKK
+  berlakuSejak      DateTime @map("berlaku_sejak") @db.Date
+
+  @@map("bpjs_rates")
+}
+
+model OvertimeRule {
+  id        String  @id @default(uuid()) @db.Uuid
+  companyId String  @map("company_id") @db.Uuid
+  isHoliday Boolean @map("is_holiday")
+  hourFrom  Int     @map("hour_from")
+  hourTo    Int?    @map("hour_to")
+  multiplier Decimal @db.Decimal(3, 2)
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@map("overtime_rules")
+}
+
+// =============================================================================
+// REIMBURSEMENT (Fase 2)
+// =============================================================================
+
+model ReimbursementRequest {
+  id                  String              @id @default(uuid()) @db.Uuid
+  employeeId          String              @map("employee_id") @db.Uuid
+  totalAmount         Decimal             @map("total_amount") @db.Decimal(15, 2)
+  status              ReimbursementStatus @default(PENDING)
+  currentApprovalStep Int                 @default(1) @map("current_approval_step")
+  createdAt           DateTime            @default(now()) @map("created_at")
+
+  employee Employee              @relation(fields: [employeeId], references: [id])
+  items    ReimbursementItem[]
+
+  @@map("reimbursement_requests")
+}
+
+model ReimbursementItem {
+  id                     String  @id @default(uuid()) @db.Uuid
+  reimbursementRequestId String  @map("reimbursement_request_id") @db.Uuid
+  category               String  @db.VarChar(50)
+  description            String  @db.Text
+  amount                 Decimal @db.Decimal(15, 2)
+  receiptUrl             String  @map("receipt_url") @db.VarChar(500)
+
+  request ReimbursementRequest @relation(fields: [reimbursementRequestId], references: [id])
+
+  @@map("reimbursement_items")
+}
+
+// =============================================================================
+// NOTIFIKASI & AUDIT
+// =============================================================================
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  type      String   @db.VarChar(50)
+  title     String   @db.VarChar(255)
+  message   String   @db.Text
+  isRead    Boolean  @default(false) @map("is_read")
+  linkUrl   String?  @map("link_url") @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id        String      @id @default(uuid()) @db.Uuid
+  userId    String      @map("user_id") @db.Uuid
+  tableName String      @map("table_name") @db.VarChar(100)
+  recordId  String      @map("record_id") @db.Uuid
+  action    AuditAction
+  oldValue  Json?       @map("old_value")
+  newValue  Json?       @map("new_value")
+  ipAddress String?     @map("ip_address") @db.VarChar(50)
+  userAgent String?     @map("user_agent") @db.VarChar(500)
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([tableName, recordId])
+  @@index([userId])
+  @@map("audit_logs")
+}
+

@@ -1,0 +1,14 @@
+{
+  "name": "nexus-hris",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "packages/payroll-engine"
+  ],
+  "scripts": {
+    "test:payroll-engine": "npm run test --workspace=packages/payroll-engine"
+  }
+}
+

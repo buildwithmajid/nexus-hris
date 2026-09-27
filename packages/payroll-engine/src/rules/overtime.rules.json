@@ -1,0 +1,12 @@
+{
+  "hourlyDivisor": 173,
+  "workday": [
+    { "isHoliday": false, "hourFrom": 0, "hourTo": 1, "multiplier": 1.5 },
+    { "isHoliday": false, "hourFrom": 1, "hourTo": null, "multiplier": 2.0 }
+  ],
+  "holiday": [
+    { "isHoliday": true, "hourFrom": 0, "hourTo": 8, "multiplier": 2.0 },
+    { "isHoliday": true, "hourFrom": 8, "hourTo": 9, "multiplier": 3.0 },
+    { "isHoliday": true, "hourFrom": 9, "hourTo": null, "multiplier": 4.0 }
+  ]
+}
